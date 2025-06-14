@@ -1,4 +1,4 @@
-name: OpenWrt_Build
+name: Libwrt-build
 
 on:
   workflow_dispatch:
