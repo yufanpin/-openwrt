@@ -1,15 +1,15 @@
 #!/bin/bash
 
 ### ========== 1. 添加 feed 源 ==========
-echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
+# echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
 
 ### ========== 2. 添加额外插件 ==========
-git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac
-git clone --depth=1 https://github.com/selfcan/luci-app-onliner.git package/luci-app-onliner
-git clone --depth=1 https://github.com/sirpdboy/luci-app-netspeedtest.git package/luci-app-netspeedtest
-git clone --depth=1 https://github.com/sirpdboy/luci-app-partexp.git package/luci-app-partexp
-git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
+# git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac
+# git clone --depth=1 https://github.com/selfcan/luci-app-onliner.git package/luci-app-onliner
+# git clone --depth=1 https://github.com/sirpdboy/luci-app-netspeedtest.git package/luci-app-netspeedtest
+# git clone --depth=1 https://github.com/sirpdboy/luci-app-partexp.git package/luci-app-partexp
+# git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
 
 
 
@@ -37,7 +37,7 @@ sed -i "s/${orig_version}/R${date_version} by Superman/g" package/lean/default-s
 
 ### ========== 4. 修复兼容问题 ==========
 # 修复 hostapd 报错
-cp -f $GITHUB_WORKSPACE/scripts/011-fix-mbo-modules-build.patch package/network/services/hostapd/patches/011-fix-mbo-modules-build.patch
+# cp -f $GITHUB_WORKSPACE/scripts/011-fix-mbo-modules-build.patch package/network/services/hostapd/patches/011-fix-mbo-modules-build.patch
 
 # 修复 armv8 平台 xfsprogs 报错
 sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE/g' feeds/packages/utils/xfsprogs/Makefile
