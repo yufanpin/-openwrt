@@ -9,6 +9,17 @@
 │   └── recs07.config          <- 编译配置文件           
 ├── diy-script.sh              <- 自定义补丁/设置脚本    
 └── README.md
-```                                      
+
+
+
+
+目前我使用的是libwrt
+然后修改了一下源码的
+改用lienol的luci
+
+```
+
+
+                                 
 
 
