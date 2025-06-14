@@ -3,11 +3,10 @@
 你的 GitHub 仓库结构：
 ├── .github/
 │   └── workflows/
-│       └── build.yml          <- 上面这个 workflow 文件
+│       └── build.yml          <- 上面这个 workflow 文件 \n
 ├── configs/
-│   └── recs07.config          <- 编译配置文件
-├── diy-script.sh              <- 自定义补丁/设置脚本
-└── README.md
-
+│   └── recs07.config          <- 编译配置文件           \n
+├── diy-script.sh              <- 自定义补丁/设置脚本    \n
+└── README.md                                            \n
 
 
