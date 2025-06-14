@@ -5,11 +5,11 @@
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
 
 ### ========== 2. 添加额外插件 ==========
-# git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac
-# git clone --depth=1 https://github.com/selfcan/luci-app-onliner.git package/luci-app-onliner
-# git clone --depth=1 https://github.com/sirpdboy/luci-app-netspeedtest.git package/luci-app-netspeedtest
-# git clone --depth=1 https://github.com/sirpdboy/luci-app-partexp.git package/luci-app-partexp
-# git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
+git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac
+git clone --depth=1 https://github.com/selfcan/luci-app-onliner.git package/luci-app-onliner
+git clone --depth=1 https://github.com/sirpdboy/luci-app-netspeedtest.git package/luci-app-netspeedtest
+git clone --depth=1 https://github.com/sirpdboy/luci-app-partexp.git package/luci-app-partexp
+git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
 
 
 
@@ -55,36 +55,6 @@ sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE
 ./scripts/feeds install -a
 
 
-
-
-### ========== 7. 自动识别 OpenWrt 架构和版本 ==========
-
-# 获取 OpenWrt 架构名（如 aarch64_cortex-a53、x86_64）
-ARCH=$(grep '^CONFIG_TARGET_ARCH_PACKAGES=' .config | cut -d '"' -f2)
-
-# 获取 OpenWrt 版本号（VERSION_NUMBER 和 VERSION_CODE）
-OPENWRT_MAJOR=$(grep '^VERSION_NUMBER:=' include/version.mk | cut -d '=' -f2 | tr -d ' ')
-OPENWRT_MINOR=$(grep '^VERSION_CODE:=' include/version.mk | cut -d '=' -f2 | tr -d ' ')
-
-# 判断是否为 SNAPSHOT 版本（VERSION_NUMBER 是否包含 SNAPSHOT）
-if grep -q "SNAPSHOT" include/version.mk || [[ "$OPENWRT_MAJOR" == *SNAPSHOT* ]]; then
-    MIRROR_URL="https://mirrors.pku.edu.cn/openwrt/snapshots/packages/${ARCH}"
-else
-    MIRROR_URL="https://mirrors.pku.edu.cn/openwrt/releases/${OPENWRT_MAJOR}.${OPENWRT_MINOR}/packages/${ARCH}"
-fi
-
-# ========= 写入自定义 distfeeds.conf ==========
-mkdir -p package/base-files/files/etc/opkg
-
-cat > package/base-files/files/etc/opkg/distfeeds.conf <<EOF
-src/gz openwrt_base ${MIRROR_URL}/base
-src/gz openwrt_luci ${MIRROR_URL}/luci
-src/gz openwrt_packages ${MIRROR_URL}/packages
-src/gz openwrt_routing ${MIRROR_URL}/routing
-src/gz openwrt_telephony ${MIRROR_URL}/telephony
-EOF
-
-echo "[OK] 使用北京大学源：$MIRROR_URL"
 
 
 
