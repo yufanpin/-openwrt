@@ -1,4 +1,4 @@
-# -openwrt
+# openwrt
 ```
 通用云编译模板
 你的 GitHub 仓库结构：
