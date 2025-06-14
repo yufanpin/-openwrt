@@ -29,10 +29,10 @@ sed -i "s/hostname='.*'/hostname='HOMR'/g" package/base-files/files/bin/config_g
 # 修改本地时间格式显示
 sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
 
-修改版本号为编译日期 + 自定义名
-date_version=$(date +"%y.%m.%d")
-orig_version=$(grep "DISTRIB_REVISION=" package/lean/default-settings/files/zzz-default-settings | awk -F "'" '{print $2}')
-sed -i "s/${orig_version}/R${date_version} by Superman/g" package/lean/default-settings/files/zzz-default-settings
+# 修改版本号为编译日期 + 自定义名
+# date_version=$(date +"%y.%m.%d")
+# orig_version=$(grep "DISTRIB_REVISION=" package/lean/default-settings/files/zzz-default-settings | awk -F "'" '{print $2}')
+# sed -i "s/${orig_version}/R${date_version} by Superman/g" package/lean/default-settings/files/zzz-default-settings
 
 
 ### ========== 4. 修复兼容问题 ==========
@@ -53,6 +53,38 @@ sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE
 ### ========== 6. 拉取 feeds ==========
 ./scripts/feeds update -a
 ./scripts/feeds install -a
+
+
+
+
+### ========== 7. 自动识别 OpenWrt 架构和版本 ==========
+
+# 获取 OpenWrt 架构名（如 aarch64_cortex-a53、x86_64）
+ARCH=$(grep '^CONFIG_TARGET_ARCH_PACKAGES=' .config | cut -d '"' -f2)
+
+# 获取 OpenWrt 版本号（VERSION_NUMBER 和 VERSION_CODE）
+OPENWRT_MAJOR=$(grep '^VERSION_NUMBER:=' include/version.mk | cut -d '=' -f2 | tr -d ' ')
+OPENWRT_MINOR=$(grep '^VERSION_CODE:=' include/version.mk | cut -d '=' -f2 | tr -d ' ')
+
+# 判断是否为 SNAPSHOT 版本（VERSION_NUMBER 是否包含 SNAPSHOT）
+if grep -q "SNAPSHOT" include/version.mk || [[ "$OPENWRT_MAJOR" == *SNAPSHOT* ]]; then
+    MIRROR_URL="https://mirrors.pku.edu.cn/openwrt/snapshots/packages/${ARCH}"
+else
+    MIRROR_URL="https://mirrors.pku.edu.cn/openwrt/releases/${OPENWRT_MAJOR}.${OPENWRT_MINOR}/packages/${ARCH}"
+fi
+
+# ========= 写入自定义 distfeeds.conf ==========
+mkdir -p package/base-files/files/etc/opkg
+
+cat > package/base-files/files/etc/opkg/distfeeds.conf <<EOF
+src/gz openwrt_base ${MIRROR_URL}/base
+src/gz openwrt_luci ${MIRROR_URL}/luci
+src/gz openwrt_packages ${MIRROR_URL}/packages
+src/gz openwrt_routing ${MIRROR_URL}/routing
+src/gz openwrt_telephony ${MIRROR_URL}/telephony
+EOF
+
+echo "[OK] 使用北京大学源：$MIRROR_URL"
 
 
 
