@@ -5,11 +5,28 @@
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
 
 ### ========== 2. 添加额外插件 ==========
-git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac
-git clone --depth=1 https://github.com/selfcan/luci-app-onliner.git package/luci-app-onliner
-git clone --depth=1 https://github.com/sirpdboy/luci-app-netspeedtest.git package/luci-app-netspeedtest
-git clone --depth=1 https://github.com/sirpdboy/luci-app-partexp.git package/luci-app-partexp
-git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter
+git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac                          #集客ac控制器
+git clone --depth=1 https://github.com/selfcan/luci-app-onliner.git package/luci-app-onliner                          #显示上线用户
+git clone --depth=1 https://github.com/sirpdboy/luci-app-partexp.git package/luci-app-partexp                         #格式化分区
+git clone --depth=1 https://github.com/destan19/OpenAppFilter.git package/OpenAppFilter                               #应用过滤，防沉迷插件
+git clone --depth=1 https://github.com/sirpdboy/luci-app-advancedplus.git package/luci-app-advancedplus               #kucat主题设置
+git clone --depth=1 https://github.com/ending7495/luci-theme-kucat.git package/luci-theme-kucat                       #kucat主题
+git clone --depth=1 https://github.com/sirpdboy/luci-app-lucky.git package/lucky                                      #lucky大吉，内网穿透插件
+git clone --depth=1 https://github.com/sirpdboy/luci-app-watchdog package/watchdog                                    #监控登录次数，超过次数就拉黑IP
+git clone --depth=1 https://github.com/sirpdboy/luci-app-wizard package/luci-app-wizard                               #设置向导，可以一键修改IP地址等
+git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-app-taskplan                           #定时清理内存、重启、关机等操作等，还有多wan短线重连等
+git clone --depth=1 https://github.com/sirpdboy/luci-app-adguardhome.git package/luci-app-adguardhome                 #过滤广告，经过精简可改端口和完全汉化版本。
+
+
+
+
+# #添加一个turboacc，仅支持fw4
+# ### ========== 额外：拉取 turboacc（不启用 SFE） ==========
+# echo "[INFO] 拉取 luci-app-turboacc (禁用 SFE)"
+# curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh
+# bash add_turboacc.sh --no-sfe
+
+
 
 
 
