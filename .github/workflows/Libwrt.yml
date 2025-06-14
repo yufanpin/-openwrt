@@ -8,7 +8,7 @@ on:
 env:
   REPO_URL: https://github.com/yufanpin/openwrt-6.x.git    # 源码仓库地址，修改这里即可
   REPO_BRANCH: k6.12-nss                                   # 分支名称，修改这里即可
-  CONFIG_FILE: configs/ER1.config                      # 配置文件路径，修改这里即可
+  CONFIG_FILE: configs/recs07.config                      # 配置文件路径，修改这里即可
   DIY_SCRIPT: diy-script.sh                             # 自定义脚本，按需修改
   CACHE_TOOLCHAIN: true                                 # 是否缓存工具链
   UPLOAD_BIN_DIR: false                                 # 是否上传bin目录，通常false
