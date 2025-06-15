@@ -1,5 +1,14 @@
 #!/bin/bash
 
+
+
+### 修复 Rust 在 CI 环境的限制
+export RUST_BOOTSTRAP=1
+export LLVM_DOWNLOAD_CI_LLVM=if-unchanged
+
+
+
+
 ### ========== 1. 添加 feed 源 ==========
 # echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
