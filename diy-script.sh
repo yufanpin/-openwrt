@@ -2,10 +2,6 @@
 
 
 
-### 修复 Rust 在 CI 环境的限制
-export RUST_BOOTSTRAP=1
-export LLVM_DOWNLOAD_CI_LLVM=if-unchanged
-
 
 
 
@@ -38,7 +34,7 @@ git clone --depth=1 https://github.com/sirpdboy/luci-app-watchdog package/watchd
 git clone --depth=1 https://github.com/sirpdboy/luci-app-wizard package/luci-app-wizard                               #设置向导，可以一键修改IP地址等
 git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-app-taskplan                           #定时清理内存、重启、关机等操作等，还有多wan短线重连等
 git clone --depth=1 https://github.com/sirpdboy/luci-app-adguardhome.git package/luci-app-adguardhome                 #过滤广告，经过精简可改端口和完全汉化版本。
-git clone --depth=1 https://github.com/yufanpin/luci-app-turboacc.git package/luci-app-turboacc
+
 
 
 
