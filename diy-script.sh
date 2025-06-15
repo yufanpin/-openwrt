@@ -29,9 +29,10 @@ git clone --depth=1 https://github.com/sirpdboy/luci-app-watchdog package/watchd
 git clone --depth=1 https://github.com/sirpdboy/luci-app-wizard package/luci-app-wizard                               #设置向导，可以一键修改IP地址等
 git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-app-taskplan                           #定时清理内存、重启、关机等操作等，还有多wan短线重连等
 git clone --depth=1 https://github.com/sirpdboy/luci-app-adguardhome.git package/luci-app-adguardhome                 #过滤广告，经过精简可改端口和完全汉化版本。
+git clone --depth=1 https://github.com/yufanpin/luci-app-turboacc.git package/luci-app-turboacc
 
-#fw3的turboacc
-git_sparse_clone main https://github.com/yufanpin/kwrt-packages luci-app-turboacc
+
+
 
 # #添加一个turboacc，仅支持fw4
 # ### ========== 额外：拉取 turboacc（不启用 SFE） ==========
