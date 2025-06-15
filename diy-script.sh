@@ -39,11 +39,11 @@ git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-a
 
 
 
-# #添加一个turboacc，仅支持fw4
-# ### ========== 额外：拉取 turboacc（不启用 SFE） ==========
-echo "[INFO] 拉取 luci-app-turboacc (禁用 SFE)"
-curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh
-bash add_turboacc.sh --no-sfe
+# # #添加一个turboacc，仅支持fw4
+# # ### ========== 额外：拉取 turboacc（不启用 SFE） ==========
+# echo "[INFO] 拉取 luci-app-turboacc (禁用 SFE)"
+# curl -sSL https://raw.githubusercontent.com/chenmozhijin/turboacc/luci/add_turboacc.sh -o add_turboacc.sh
+# bash add_turboacc.sh --no-sfe
 
 
 
