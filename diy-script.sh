@@ -58,7 +58,7 @@ sed -i "s/hostname='.*'/hostname='HOMR'/g" package/base-files/files/bin/config_g
 # sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.config
 
 # 修改本地时间格式显示
-sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
+# sed -i 's/os.date()/os.date("%a %Y-%m-%d %H:%M:%S")/g' package/lean/autocore/files/*/index.htm
 
 # 修改版本号为编译日期 + 自定义名
 # date_version=$(date +"%y.%m.%d")
