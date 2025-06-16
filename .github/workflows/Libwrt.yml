@@ -157,16 +157,48 @@ jobs:
         name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_PATH }}/bin
 
-    - name: Organize Files(整理文件)
+    # - name: Organize Files(整理文件)
+    #   if: steps.compile.outputs.status == 'success'
+    #   run: |
+    #     cd $OPENWRT_PATH/bin/targets/*/*
+    #     cat sha256sums
+    #     cp $OPENWRT_PATH/.config build.config
+    #     mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
+    #     tar -zcf Packages.tar.gz packages
+    #     rm -rf packages feeds.buildinfo version.buildinfo
+    #     echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
+    - name: Organize Files(整理打包插件文件)
       if: steps.compile.outputs.status == 'success'
       run: |
         cd $OPENWRT_PATH/bin/targets/*/*
         cat sha256sums
         cp $OPENWRT_PATH/.config build.config
-        mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
-        tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo
+
+        IPK_DIR="$OPENWRT_PATH/bin/packages"
+        FOUND_IPK=false
+        FOUND_APK=false
+
+        if find "$IPK_DIR" -type f -name '*.ipk' | grep -q .; then
+          FOUND_IPK=true
+        fi
+        if find "$IPK_DIR" -type f -name '*.apk' | grep -q .; then
+          FOUND_APK=true
+        fi
+
+        if [ "$FOUND_IPK" = true ] || [ "$FOUND_APK" = true ]; then
+          mkdir -p packages
+          [ "$FOUND_IPK" = true ] && find "$IPK_DIR" -type f -name '*.ipk' -exec mv -f {} packages/ \;
+          [ "$FOUND_APK" = true ] && find "$IPK_DIR" -type f -name '*.apk' -exec mv -f {} packages/ \;
+          tar -zcf Packages.tar.gz packages
+          rm -rf packages
+        else
+          echo "::warning ::No .ipk or .apk plugin packages found, skipping packaging step."
+        fi
+
+        rm -f feeds.buildinfo version.buildinfo
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
 
     - name: Upload Firmware To Artifact(将固件上传到Artifact)
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
