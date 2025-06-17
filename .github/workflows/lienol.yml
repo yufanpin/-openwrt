@@ -62,7 +62,7 @@ jobs:
 
     - name: 克隆 OpenWrt 源码
       run: |
-        git clone --depth 1 -b ${{ env.REPO_BRANCH }} ${{ env.REPO_URL }} openwrt
+        git clone --depth 1 -b 24.10 ${{ env.REPO_URL }} openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         echo "VERSION_INFO=$(git log -1 --pretty=format:'作者: %an\n时间: %cd\n内容: %s\nhash: %H')" >> $GITHUB_ENV
