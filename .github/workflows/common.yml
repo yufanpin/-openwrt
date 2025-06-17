@@ -1,4 +1,4 @@
-name: common
+name: 通用模板
 
 on:
   workflow_dispatch:  # 手动触发
@@ -14,7 +14,7 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: V1.0
+  FIRMWARE_TAG: Lienol_op                            #✅release标签
   TZ: Asia/Shanghai
 
 jobs:
@@ -108,12 +108,18 @@ jobs:
       run: |
         cd $OPENWRT_PATH
         echo "🔨 使用最大线程数编译: $(nproc)"
-        if make -j$(nproc) | tee build.log; then
+        
+        make -j$(nproc) | tee build.log
+        MAKE_STATUS=${PIPESTATUS[0]}
+        
+        if [ $MAKE_STATUS -eq 0 ]; then
           echo "✅ 多线程编译成功"
           echo "status=success" >> $GITHUB_OUTPUT
         else
           echo "⚠️ 多线程失败，尝试单线程详细编译..."
-          if make -j1 V=s | tee -a build.log; then
+          make -j1 V=s | tee -a build.log
+          MAKE_STATUS_SINGLE=${PIPESTATUS[0]}
+          if [ $MAKE_STATUS_SINGLE -eq 0 ]; then
             echo "✅ 单线程编译成功"
             echo "status=success" >> $GITHUB_OUTPUT
           else
@@ -122,6 +128,7 @@ jobs:
             exit 1
           fi
         fi
+        
         echo "DATE=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
         echo "FILE_DATE=$(date '+%Y.%m.%d')" >> $GITHUB_ENV
 
