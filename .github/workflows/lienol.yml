@@ -1,4 +1,4 @@
-name: Lienol_Build
+name: RE-CS-07
 
 on:
   workflow_dispatch:  # 手动触发
@@ -6,15 +6,15 @@ on:
     - cron: 0 19 * * *  # 每天 03:00（北京时间）自动触发
 
 env:
-  REPO_URL: https://github.com/Lienol/openwrt.git     # ✅ 修改：源码地址
-  REPO_BRANCH: 24.10                                 # ✅ 修改：分支名
+  REPO_URL: https://github.com/ending7495/openwrt.git     # ✅ 修改：源码地址
+  REPO_BRANCH: '24.10'                                 # ✅ 修改：分支名
   CONFIG_FILE: configs/L.config                      # ✅ 修改：配置文件路径
   DIY_SCRIPT: diy-script.sh                          # 可选 DIY 脚本路径
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: Lienol_op
+  FIRMWARE_TAG: jdc-RECS07_op                             # ✅ 修改：release标签
   TZ: Asia/Shanghai
 
 jobs:
@@ -62,7 +62,7 @@ jobs:
 
     - name: 克隆 OpenWrt 源码
       run: |
-        git clone --depth 1 -b 24.10 $REPO_URL openwrt
+        git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         echo "VERSION_INFO=$(git log -1 --pretty=format:'作者: %an\n时间: %cd\n内容: %s\nhash: %H')" >> $GITHUB_ENV
