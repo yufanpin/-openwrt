@@ -1,0 +1,188 @@
+name: 有代理的ER1
+
+on:
+  workflow_dispatch:  # 手动触发
+  schedule:
+    - cron: 0 19 * * *  # 每天 03:00（北京时间）自动触发
+
+env:
+  REPO_URL: https://github.com/ending7495/openwrt.git     # ✅ 修改：源码地址
+  REPO_BRANCH: '24.10'                                 # ✅ 修改：分支名
+  CONFIG_FILE: configs/p.config                      # ✅ 修改：配置文件路径
+  DIY_SCRIPT: diy-script.sh                          # 可选 DIY 脚本路径
+  CLASH_KERNEL: amd64
+  CACHE_TOOLCHAIN: true
+  UPLOAD_BIN_DIR: false
+  FIRMWARE_RELEASE: true
+  FIRMWARE_TAG: RECS07-pass                             # ✅ 修改：release标签
+  TZ: Asia/Shanghai
+
+jobs:
+  Build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: 🚀 检查服务器性能（美化版）
+      run: |
+        echo -e "\e[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+        echo -e "\e[1;35m🌐 GitHub Actions Runner 服务器性能概览\e[0m"
+        echo -e "\e[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+
+        echo -e "\e[1;32m📌 CPU 信息：\e[0m"
+        lscpu | grep -E 'Model name|Architecture|CPU\(s\)|Thread|Core|MHz|Cache'
+
+        echo -e "\n\e[1;34m📌 内存信息：\e[0m"
+        free -h
+
+        echo -e "\n\e[1;33m📌 磁盘使用情况：\e[0m"
+        df -hT
+
+        echo -e "\e[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+        echo -e "\e[1;32m✅ 性能检查完毕，准备启动构建流程！\e[0m"
+        echo -e "\e[1;36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\e[0m"
+
+    - name: 初始化环境
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        docker rmi $(docker images -q) || true
+        sudo apt-get update
+        sudo apt-get install -y $(curl -fsSL https://is.gd/depends_ubuntu_2204)
+        sudo timedatectl set-timezone "$TZ"
+
+    - name: 合并磁盘空间
+      uses: easimon/maximize-build-space@master
+      with:
+        swap-size-mb: 1024
+        temp-reserve-mb: 100
+        root-reserve-mb: 1024
+
+    - name: 拉取当前仓库（获取 config、脚本等）
+      uses: actions/checkout@v4
+
+    - name: 克隆 OpenWrt 源码
+      run: |
+        git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
+        cd openwrt
+        echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+        echo "VERSION_INFO=$(git log -1 --pretty=format:'作者: %an\n时间: %cd\n内容: %s\nhash: %H')" >> $GITHUB_ENV
+
+    - name: 执行自定义 DIY 脚本（可选）
+      if: env.DIY_SCRIPT != ''
+      run: |
+        cd $OPENWRT_PATH
+        chmod +x ../$DIY_SCRIPT
+        ../$DIY_SCRIPT
+
+    - name: 生成平台变量
+      run: |
+        cp $CONFIG_FILE $OPENWRT_PATH/.config
+        cd $OPENWRT_PATH
+        make defconfig > /dev/null 2>&1
+        echo "SOURCE_REPO=$(basename -s .git $REPO_URL)" >> $GITHUB_ENV
+        echo "DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | cut -d '\"' -f2)" >> $GITHUB_ENV
+        echo "DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | cut -d '\"' -f2)" >> $GITHUB_ENV
+
+    - name: 缓存工具链
+      if: env.CACHE_TOOLCHAIN == 'true'
+      uses: HiGarfield/cachewrtbuild@main
+      with:
+        ccache: false
+        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+        prefix: ${{ env.OPENWRT_PATH }}
+
+    - name: 准备构建环境
+      run: |
+        [ -e files ] && mv files $OPENWRT_PATH/files
+        [ -e $CONFIG_FILE ] && cp $CONFIG_FILE $OPENWRT_PATH/.config
+
+    - name: 下载依赖包
+      run: |
+        cd $OPENWRT_PATH
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: 编译 OpenWrt 固件
+      id: compile
+      run: |
+        cd $OPENWRT_PATH
+        echo "🔨 使用最大线程数编译: $(nproc)"
+        
+        make -j$(nproc) | tee build.log
+        MAKE_STATUS=${PIPESTATUS[0]}
+        
+        if [ $MAKE_STATUS -eq 0 ]; then
+          echo "✅ 多线程编译成功"
+          echo "status=success" >> $GITHUB_OUTPUT
+        else
+          echo "⚠️ 多线程失败，尝试单线程详细编译..."
+          make -j1 V=s | tee -a build.log
+          MAKE_STATUS_SINGLE=${PIPESTATUS[0]}
+          if [ $MAKE_STATUS_SINGLE -eq 0 ]; then
+            echo "✅ 单线程编译成功"
+            echo "status=success" >> $GITHUB_OUTPUT
+          else
+            echo "❌ 单线程编译失败，构建终止"
+            echo "status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        fi
+        
+        echo "DATE=$(date '+%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+        echo "FILE_DATE=$(date '+%Y.%m.%d')" >> $GITHUB_ENV
+
+    - name: 上传编译日志（无论是否成功）
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log-${{ env.FILE_DATE }}
+        path: ${{ env.OPENWRT_PATH }}/build.log
+
+    - name: 检查磁盘使用情况
+      if: (!cancelled())
+      run: df -hT
+
+    - name: 上传 bin 目录（可选）
+      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        path: ${{ env.OPENWRT_PATH }}/bin
+
+    - name: 整理打包插件文件
+      if: steps.compile.outputs.status == 'success'
+      run: |
+        cd $OPENWRT_PATH/bin/targets/*/*
+        mkdir -p packages
+        find $OPENWRT_PATH/bin/packages -type f \( -name "*.ipk" -o -name "*.apk" \) -exec cp {} packages/ \;
+        [ "$(ls -A packages)" ] && tar -zcf Packages.tar.gz packages
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+
+    - name: 上传固件到 Artifact（调试用）
+      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        path: ${{ env.FIRMWARE_PATH }}
+
+    - name: 上传固件到 GitHub Release
+      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+      uses: ncipollo/release-action@v1
+      with:
+        name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+        tag: ${{ env.FIRMWARE_TAG }}
+        allowUpdates: true
+        token: ${{ secrets.GITHUB_TOKEN }}
+        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        body: |
+          ✅ OpenWrt 固件构建完成！
+          - 🔗 源码仓库: ${{ env.REPO_URL }}
+          - 🌱 使用分支: ${{ env.REPO_BRANCH }}
+          - 🧊 固件版本: ${{ env.FIRMWARE_TAG }}
+          - 🌐 默认地址: 192.168.1.1（或自定义）
+          - 🔐 默认密码: 无
+          - 🛠 最后一次源码提交记录:
+            ```
+            ${{ env.VERSION_INFO }}
+            ```
