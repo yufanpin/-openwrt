@@ -62,7 +62,7 @@ jobs:
 
     - name: 克隆 OpenWrt 源码
       run: |
-        git clone --depth 1 -b 24.10 $REPO_URL openwrt
+        git clone --depth 1 -b ${{ env.REPO_BRANCH }} ${{ env.REPO_URL }} openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         echo "VERSION_INFO=$(git log -1 --pretty=format:'作者: %an\n时间: %cd\n内容: %s\nhash: %H')" >> $GITHUB_ENV
@@ -71,15 +71,15 @@ jobs:
       if: env.DIY_SCRIPT != ''
       run: |
         cd $OPENWRT_PATH
-        chmod +x ../$DIY_SCRIPT
-        ../$DIY_SCRIPT
+        chmod +x ../${{ env.DIY_SCRIPT }}
+        ../${{ env.DIY_SCRIPT }}
 
     - name: 生成平台变量
       run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
+        cp ${{ env.CONFIG_FILE }} $OPENWRT_PATH/.config
         cd $OPENWRT_PATH
         make defconfig > /dev/null 2>&1
-        echo "SOURCE_REPO=$(basename -s .git $REPO_URL)" >> $GITHUB_ENV
+        echo "SOURCE_REPO=$(basename -s .git ${{ env.REPO_URL }})" >> $GITHUB_ENV
         echo "DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | cut -d '\"' -f2)" >> $GITHUB_ENV
         echo "DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | cut -d '\"' -f2)" >> $GITHUB_ENV
 
@@ -94,7 +94,7 @@ jobs:
     - name: 准备构建环境
       run: |
         [ -e files ] && mv files $OPENWRT_PATH/files
-        [ -e $CONFIG_FILE ] && cp $CONFIG_FILE $OPENWRT_PATH/.config
+        [ -e ${{ env.CONFIG_FILE }} ] && cp ${{ env.CONFIG_FILE }} $OPENWRT_PATH/.config
 
     - name: 下载依赖包
       run: |
@@ -167,7 +167,10 @@ jobs:
         tag: ${{ env.FIRMWARE_TAG }}
         allowUpdates: true
         token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        artifacts: |
+          ${{ env.FIRMWARE_PATH }}/*.bin
+          ${{ env.FIRMWARE_PATH }}/*.img.gz
+          ${{ env.FIRMWARE_PATH }}/Packages.tar.gz
         body: |
           ✅ OpenWrt 固件构建完成！
           - 🔗 源码仓库: ${{ env.REPO_URL }}
