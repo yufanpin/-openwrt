@@ -14,7 +14,7 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: Libwrt_ER1
+  FIRMWARE_TAG: v1_lienol
   TZ: Asia/Shanghai
 
 jobs:
