@@ -13,9 +13,11 @@
 
 
 
-目前我使用的是libwrt
-然后修改了一下源码的
-改用lienol的luci
+目前使用的是lienol的源码进行编译
+https://github.com/Lienol/openwrt.git
+
+https://github.com/ending7495/openwrt.git
+
 
 ```
 
