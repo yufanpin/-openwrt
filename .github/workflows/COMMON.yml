@@ -1,4 +1,4 @@
-name: Libwrt_Build
+name: COMMON_Build
 
 on:
   workflow_dispatch:
