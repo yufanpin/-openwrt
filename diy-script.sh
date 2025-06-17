@@ -9,14 +9,7 @@
 # echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
 
-#添加代理插件
-echo 'src-git kenzo https://github.com/kenzok8/openwrt-packages.git' >>feeds.conf.default
-echo 'src-git small https://github.com/kenzok8/small.git' >>feeds.conf.default
-./scripts/feeds update -a && rm -rf feeds/luci/applications/luci-app-mosdns
-rm -rf feeds/packages/net/{alist,adguardhome,mosdns,xray*,v2ray*,v2ray*,sing*,smartdns}
-rm -rf feeds/packages/utils/v2dat
-rm -rf feeds/packages/lang/golang
-git clone https://github.com/kenzok8/golang feeds/packages/lang/golang
+
 
 
 # Git稀疏克隆，只克隆指定目录到本地
