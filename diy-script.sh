@@ -10,7 +10,7 @@ echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
 
 # echo 'src-git package https://github.com/yufanpin/package.git' >>feeds.conf.default
-echo 'src-git packages https://github.com/coolsnowwolf/packages' >>feeds.conf.default
+
 
 
 
