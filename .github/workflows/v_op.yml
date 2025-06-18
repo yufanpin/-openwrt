@@ -2,8 +2,8 @@ name: V_Build
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: 0 19 * * *  # 每天 UTC 时间 19:00 自动触发（北京时间 03:00）
+  # schedule:
+  #   - cron: 0 19 * * *  # 每天 UTC 时间 19:00 自动触发（北京时间 03:00）
 
 env:
   REPO_URL: https://github.com/VIKINGYFY/immortalwrt.git  # OpenWrt 源码仓库
