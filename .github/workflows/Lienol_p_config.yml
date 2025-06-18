@@ -1,4 +1,4 @@
-name: 有代理的ER1
+name: Lienol_p_config
 
 on:
   workflow_dispatch:  # 手动触发
@@ -14,7 +14,7 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: RECS07-pass                             # ✅ 修改：release标签
+  FIRMWARE_TAG: Lienol-op                             # ✅ 修改：release标签
   TZ: Asia/Shanghai
 
 jobs:
