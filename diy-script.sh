@@ -40,7 +40,6 @@ function git_sparse_clone() {
 # git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-app-taskplan                           #定时清理内存、重启、关机等操作等，还有多wan短线重连等
 
 
-git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2.git package/passwall2
 
 
 
