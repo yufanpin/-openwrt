@@ -2,8 +2,8 @@ name: 通用模板
 
 on:
   workflow_dispatch:  # 手动触发
-  schedule:
-    - cron: 0 19 * * *  # 每天 03:00（北京时间）自动触发
+  # schedule:
+  #   - cron: 0 19 * * *  # 每天 03:00（北京时间）自动触发
 
 env:
   REPO_URL: https://github.com/Lienol/openwrt.git     # ✅ 修改：源码地址
