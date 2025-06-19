@@ -8,8 +8,7 @@
 ### ========== 1. 添加 feed 源 ==========
 #echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
 
-#下面这个为自己仓库的，删除一些插件（design主题等）
-echo 'src-git kiddin9 https://github.com/yufanpin/kwrt-packages.git' >>feeds.conf.default
+
 
 
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
