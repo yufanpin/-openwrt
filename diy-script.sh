@@ -38,12 +38,13 @@ git clone --depth=1 https://github.com/ending7495/luci-theme-kucat.git package/l
 # git clone --depth=1 https://github.com/sirpdboy/luci-app-watchdog package/watchdog                                    #监控登录次数，超过次数就拉黑IP
 # git clone --depth=1 https://github.com/sirpdboy/luci-app-wizard package/luci-app-wizard                               #设置向导，可以一键修改IP地址等
 git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-app-taskplan                           #定时清理内存、重启、关机等操作等，还有多wan短线重连等
+git clone --depth=1 https://github.com/yufanpin/luci-theme-design.git package/luci-theme-design                       #design主题，js版本
+git clone --depth=1 https://github.com/yufanpin/luci-app-design-config.git package/luci-app-design-config             #design设置界面
 
-
-# # 修复golang工具不存在问题，这里直接用helloword的golang
-# echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
-# ./scripts/feeds update helloworld
-# ./scripts/feeds install golang
+# 修复golang工具不存在问题，这里直接用helloword的golang
+echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
+./scripts/feeds update helloworld
+./scripts/feeds install golang
 
 
 
