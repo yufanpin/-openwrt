@@ -40,10 +40,10 @@ git clone --depth=1 https://github.com/ending7495/luci-theme-kucat.git package/l
 git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-app-taskplan                           #定时清理内存、重启、关机等操作等，还有多wan短线重连等
 
 
-# 修复golang工具不存在问题，这里直接用helloword的golang
-echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
-./scripts/feeds update helloworld
-./scripts/feeds install golang
+# # 修复golang工具不存在问题，这里直接用helloword的golang
+# echo 'src-git helloworld https://github.com/fw876/helloworld.git' >>feeds.conf.default
+# ./scripts/feeds update helloworld
+# ./scripts/feeds install golang
 
 
 
