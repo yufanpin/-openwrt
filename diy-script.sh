@@ -8,8 +8,7 @@
 ### ========== 1. 添加 feed 源 ==========
 echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
 
-# # 添加主题兼容luci18
-echo 'src-git opentopd https://github.com/yufanpin/luci-theme-opentopd.git' >>feeds.conf.default
+
 
 
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
@@ -46,7 +45,8 @@ function git_sparse_clone() {
 # git clone --depth=1 https://github.com/yufanpin/luci-theme-design.git package/luci-theme-design                       #design主题，js版本
 # git clone --depth=1 https://github.com/yufanpin/luci-app-design-config.git package/luci-app-design-config             #design设置界面
 
-
+# # 添加主题兼容luci18
+git clone --depth=1 https://github.com/yufanpin/luci-theme-opentopd.git package/luci-theme-opentopd                   #主题opentopd
 
 
 # 修复golang工具不存在问题，这里直接用helloword的golang
