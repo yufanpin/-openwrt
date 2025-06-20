@@ -1,4 +1,4 @@
-name: lienol_create
+name: lienol_L_create
 
 on:
   workflow_dispatch:  # 手动触发
