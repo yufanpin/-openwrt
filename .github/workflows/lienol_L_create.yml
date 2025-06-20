@@ -14,7 +14,7 @@ env:
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: Lede_lienol                             # ✅ 修改：release标签
+  FIRMWARE_TAG: lienol_create                             # ✅ 修改：release标签
   TZ: Asia/Shanghai
 
 jobs:
