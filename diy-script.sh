@@ -60,15 +60,4 @@ sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
-### ========== 7. 删除 fw4 / nftables / kmod-nft 相关源码 ==========
-echo "🚫 删除 fw4 / nftables / kmod-nft-xxx 源码，避免误编译"
 
-rm -rf package/network/config/firewall4
-rm -rf package/network/utils/nftables
-rm -rf package/kernel/linux/modules/nft-*
-
-rm -rf feeds/packages/net/nftables
-rm -rf feeds/packages/utils/nftables
-rm -rf feeds/luci/applications/luci-app-firewall4
-
-echo "✅ 已完成清理"
