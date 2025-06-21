@@ -42,7 +42,7 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        docker rmi $(docker images -q) || true
+        docker rmi -f $(docker images -q) || true
         sudo apt-get update
         sudo apt-get install -y $(curl -fsSL https://is.gd/depends_ubuntu_2204)
         sudo timedatectl set-timezone "$TZ"
@@ -62,7 +62,11 @@ jobs:
         git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        echo "VERSION_INFO=$(git log -1 --pretty=format:'作者: %an\n时间: %cd\n内容: %s\nhash: %H')" >> $GITHUB_ENV
+        {
+          echo 'VERSION_INFO<<EOF'
+          git log -1 --pretty=format:'作者: %an%n时间: %cd%n内容: %s%nhash: %H'
+          echo 'EOF'
+        } >> $GITHUB_ENV
 
     - name: 执行自定义 DIY 脚本（可选）
       if: env.DIY_SCRIPT != ''
@@ -85,18 +89,6 @@ jobs:
         echo "SOURCE_REPO=$(basename -s .git $REPO_URL)" >> $GITHUB_ENV
         echo "DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | cut -d '\"' -f2)" >> $GITHUB_ENV
         echo "DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | cut -d '\"' -f2)" >> $GITHUB_ENV
-
-    - name: 提取默认IP地址
-      run: |
-        cd $OPENWRT_PATH
-        DEFAULT_IP=$(grep 'CONFIG_TARGET_IP_ADDR=' .config | cut -d '"' -f2)
-        if [ -z "$DEFAULT_IP" ]; then
-          DEFAULT_IP="192.168.1.1"
-          echo "⚠️ 未检测到IP配置，使用默认值: $DEFAULT_IP"
-        else
-          echo "✅ 检测到默认IP: $DEFAULT_IP"
-        fi
-        echo "DEFAULT_IP=$DEFAULT_IP" >> $GITHUB_ENV
 
     - name: 缓存工具链
       if: env.CACHE_TOOLCHAIN == 'true'
@@ -200,10 +192,9 @@ jobs:
           - 🔗 源码仓库: ${{ env.REPO_URL }}
           - 🌱 使用分支: ${{ env.REPO_BRANCH }}
           - 🧊 固件版本: ${{ env.FIRMWARE_TAG }}
-          - 🌐 默认地址: ${{ env.DEFAULT_IP }}（通过 luci 可修改）
+          - 🌐 默认地址: 192.168.10.1
           - 🔐 默认密码: 无
           - 🛠 最后一次源码提交记录:
             ```
             ${{ env.VERSION_INFO }}
             ```
-
