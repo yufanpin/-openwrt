@@ -6,11 +6,11 @@ on:
     - cron: 0 19 * * *  # 每天 03:00（北京时间）自动触发
 
 env:
-  REPO_URL: https://github.com/Lienol/openwrt.git       # ✅ 源码地址
+  REPO_URL: https://github.com/ending7495/openwrt.git       # ✅ 源码地址
   REPO_BRANCH: '24.10'                                  # ✅ 分支名
   CONFIG_FILE: configs/U.config                         # ✅ 配置文件路径
   DIY_SCRIPT: diy-script.sh                             # 可选 DIY 脚本路径
-  SKIP_DEFCONFIG: 'yes'                                 # ✅ yes-跳过defconfig | no-执行defconfig
+  SKIP_DEFCONFIG: 'no'                                 # ✅ yes-跳过defconfig | no-执行defconfig
   CLASH_KERNEL: amd64
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
