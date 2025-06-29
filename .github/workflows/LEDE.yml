@@ -1,21 +1,22 @@
 # ==========================================
-# OpenWrt 主编译通用模板（支持多平台多分支）
-# 只需修改 env 变量和 on.repository_dispatch.types 即可适配任意项目
+# OpenWrt 主编译通用模板（极致兼容/带详细注释）
+# 支持手动和 update-checker.yml 事件触发
+# 只需修改 env 变量和 on.repository_dispatch.types
 # ==========================================
 
-name: Lede_Build_Template
+name: LEDE_Build_Template
 
 on:
   workflow_dispatch:  # 支持手动点击启动
-  repository_dispatch:  # 支持 update-checker.yml 自动触发
-    types: [Source Code Update lede]  # 修改为你的事件类型（如 Source Code Update libwrt）
+  repository_dispatch:  # 支持自动触发（事件类型需与 update-checker.yml 保持一致）
+    types: [Source Code Update YOUR_PROJECT]  # ← 修改为你的事件类型（如 Source Code Update lede）
 
 env:
-  REPO_URL: https://github.com/ending7495/lede.git         # 源码地址（需修改）
-  REPO_BRANCH: master                                  # 源码分支（需修改）
-  CONFIG_FILE: configs/lede.config              # .config 路径（需修改）
-  DIY_SCRIPT: lede.sh                            # 自定义脚本（需修改）
-  FIRMWARE_TAG: Lede_ER1                     # 发布标签（可修改）
+  REPO_URL: https://github.com/ending7495/lede.git         # ← 源码地址（需修改）
+  REPO_BRANCH: master                                  # ← 源码分支（需修改）
+  CONFIG_FILE: configs/lede.config              # ← .config 路径（需修改）
+  DIY_SCRIPT: lede.sh                            # ← 自定义脚本（需修改）
+  FIRMWARE_TAG: Lede_ER1                      # ← 发布标签（可修改）
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
@@ -27,7 +28,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    # 检查服务器性能
+    # 检查服务器性能（可选）
     - name: Check Server Performance
       run: |
         echo "警告⚠ 服务器性能有限，插件过多请注意！"
@@ -67,29 +68,49 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    # 克隆 OpenWrt 源码
+    # 克隆 OpenWrt 源码并容错提取元信息
     - name: Clone Source Code
       run: |
+        set -o pipefail
         df -hT $GITHUB_WORKSPACE
-        git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
+        git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
-        echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
-        VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-* 2>/dev/null | head -n1)
-        [ -n "$VERSION_KERNEL" ] && echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
-    # 生成变量，便于后续缓存和发布
+        # 提取主分支最后一次提交信息（容错）
+        VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H" 2>/dev/null || echo "unknown")
+        echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
+
+        # 提取内核版本（兼容多种源码结构）
+        VERSION_KERNEL="unknown"
+        if ls target/linux/generic/kernel-* 1>/dev/null 2>&1; then
+          VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-* | head -n1 || true)
+        elif grep -r -m1 -oP 'LINUX_VERSION:=[ ]*\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/ 2>/dev/null | head -n1 | grep -q .; then
+          VERSION_KERNEL=$(grep -r -m1 -oP 'LINUX_VERSION:=[ ]*\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/ | head -n1)
+        fi
+        echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
+
+        # Debug输出
+        echo "VERSION_INFO: $VERSION_INFO"
+        echo "VERSION_KERNEL: $VERSION_KERNEL"
+        ls -al target/linux/generic/ || true
+
+    # 生成变量，便于后续缓存和发布（兼容不同源码结构）
     - name: Generate Variables
       run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
-        cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
+        cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+        cd "$OPENWRT_PATH"
+        make defconfig > /dev/null 2>&1 || true
         SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+
+        # 兼容不同 config 格式提取 target
+        DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | grep -o '".*"' | tr -d '"' || true)
+        [ -z "$DEVICE_TARGET" ] && DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | awk -F '=' '{print $2}' | tr -d '"' || true)
         echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+
+        DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | grep -o '".*"' | tr -d '"' || true)
+        [ -z "$DEVICE_SUBTARGET" ] && DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '=' '{print $2}' | tr -d '"' || true)
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
     # 缓存工具链，加速二次编译
@@ -104,35 +125,39 @@ jobs:
     # 安装 feeds
     - name: Install Feeds
       run: |
-        cd $OPENWRT_PATH
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
+        cd "$OPENWRT_PATH"
+        ./scripts/feeds update -a || true
+        ./scripts/feeds install -a || true
 
     # 加载自定义配置并运行 diy 脚本
     - name: Load Custom Configuration and Run DIY Script
       run: |
-        [ -e files ] && mv files $OPENWRT_PATH/files
-        [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-        chmod +x $DIY_SCRIPT
-        cd $OPENWRT_PATH
-        $GITHUB_WORKSPACE/$DIY_SCRIPT
+        [ -e files ] && mv files "$OPENWRT_PATH/files"
+        [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+        chmod +x "$DIY_SCRIPT" || true
+        cd "$OPENWRT_PATH"
+        if [ -f "$GITHUB_WORKSPACE/$DIY_SCRIPT" ]; then
+          "$GITHUB_WORKSPACE/$DIY_SCRIPT" || true
+        else
+          echo "::warning ::DIY script not found, skipped"
+        fi
 
     # 下载 DL 包
     - name: Download DL Package
       run: |
-        cd $OPENWRT_PATH
-        make defconfig
-        make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+        cd "$OPENWRT_PATH"
+        make defconfig || true
+        make download -j8 || true
+        find dl -size -1024c -exec ls -l {} \; || true
+        find dl -size -1024c -exec rm -f {} \; || true
 
     # 编译固件
     - name: Compile Firmware
       id: compile
       run: |
-        cd $OPENWRT_PATH
+        cd "$OPENWRT_PATH"
         echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
+        make -j$(nproc) || make -j1 || make -j1 V=s || (echo "::error ::Build failed" && exit 1)
         echo "status=success" >> $GITHUB_OUTPUT
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
@@ -154,9 +179,9 @@ jobs:
     - name: Organize Files
       if: steps.compile.outputs.status == 'success'
       run: |
-        cd $OPENWRT_PATH/bin/targets/*/*
+        cd "$OPENWRT_PATH/bin/targets/"*/*
         cat sha256sums || true
-        cp $OPENWRT_PATH/.config build.config
+        cp "$OPENWRT_PATH/.config" build.config || true
         IPK_DIR="$OPENWRT_PATH/bin/packages"
         FOUND_IPK=false
         FOUND_APK=false
@@ -175,7 +200,7 @@ jobs:
         else
           echo "::warning ::No .ipk or .apk plugin packages found, skipping packaging step."
         fi
-        rm -f feeds.buildinfo version.buildinfo
+        rm -f feeds.buildinfo version.buildinfo || true
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     # 上传固件到 Artifact（可选）
