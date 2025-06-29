@@ -1,23 +1,25 @@
+# ==========================================
+# OpenWrt 主编译通用模板（支持多平台多分支）
+# 只需修改 env 变量和 on.repository_dispatch.types 即可适配任意项目
+# ==========================================
+
 name: OpenWrt_Build_Template
 
 on:
-  workflow_dispatch:
-  repository_dispatch:
-    types: [Source Code Update]                        # 当update-checker.yml检测到上游源码发生变动时开始自动编译
-  # schedule:
-  #   - cron: 0 19 * * *  # 可选，定时自动编译
-  
+  workflow_dispatch:  # 支持手动点击启动
+  repository_dispatch:  # 支持 update-checker.yml 自动触发
+    types: [Source Code Update YOUR_PROJECT]  # 修改为你的事件类型（如 Source Code Update libwrt）
 
 env:
-  REPO_URL: https://github.com/your/openwrt.git         # 修改为你的源码地址
-  REPO_BRANCH: master                                  # 修改为你的源码分支
-  CONFIG_FILE: configs/your_device.config              # 修改为你的.config文件路径
-  DIY_SCRIPT: diy-script.sh                            # 修改为你的自定义脚本
-  CLASH_KERNEL: amd64
+  REPO_URL: https://github.com/your/openwrt.git         # 源码地址（需修改）
+  REPO_BRANCH: master                                  # 源码分支（需修改）
+  CONFIG_FILE: configs/your_device.config              # .config 路径（需修改）
+  DIY_SCRIPT: diy-script.sh                            # 自定义脚本（需修改）
+  FIRMWARE_TAG: OpenWrt-AutoBuild                      # 发布标签（可修改）
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: OpenWrt-AutoBuild
+  CLASH_KERNEL: amd64
   TZ: Asia/Shanghai
 
 jobs:
@@ -25,6 +27,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+    # 检查服务器性能
     - name: Check Server Performance
       run: |
         echo "警告⚠ 服务器性能有限，插件过多请注意！"
@@ -37,6 +40,7 @@ jobs:
         echo "--------------------------硬盘信息--------------------------"
         echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
+    # 初始化环境，清理无用依赖
     - name: Initialization Environment
       env:
         DEBIAN_FRONTEND: noninteractive
@@ -51,6 +55,7 @@ jobs:
         sudo -E apt-get -y clean
         sudo timedatectl set-timezone "$TZ"
 
+    # 合并磁盘，扩展可用空间
     - name: Combine Disks
       uses: easimon/maximize-build-space@master
       with:
@@ -58,9 +63,11 @@ jobs:
         temp-reserve-mb: 100
         root-reserve-mb: 1024
 
+    # 拉取 workflow 仓库代码
     - name: Checkout
       uses: actions/checkout@v4
 
+    # 克隆 OpenWrt 源码
     - name: Clone Source Code
       run: |
         df -hT $GITHUB_WORKSPACE
@@ -69,10 +76,10 @@ jobs:
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
-        # 提取内核版本（自动适配大多数主线/分支）
         VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-* 2>/dev/null | head -n1)
         [ -n "$VERSION_KERNEL" ] && echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
+    # 生成变量，便于后续缓存和发布
     - name: Generate Variables
       run: |
         cp $CONFIG_FILE $OPENWRT_PATH/.config
@@ -85,6 +92,7 @@ jobs:
         DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
+    # 缓存工具链，加速二次编译
     - name: Cache Toolchain
       if: env.CACHE_TOOLCHAIN == 'true'
       uses: HiGarfield/cachewrtbuild@main
@@ -93,12 +101,14 @@ jobs:
         mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
         prefix: ${{ env.OPENWRT_PATH }}
 
+    # 安装 feeds
     - name: Install Feeds
       run: |
         cd $OPENWRT_PATH
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
+    # 加载自定义配置并运行 diy 脚本
     - name: Load Custom Configuration and Run DIY Script
       run: |
         [ -e files ] && mv files $OPENWRT_PATH/files
@@ -107,6 +117,7 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
+    # 下载 DL 包
     - name: Download DL Package
       run: |
         cd $OPENWRT_PATH
@@ -115,6 +126,7 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    # 编译固件
     - name: Compile Firmware
       id: compile
       run: |
@@ -125,10 +137,12 @@ jobs:
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
 
+    # 检查空间使用
     - name: Check Space Usage
       if: (!cancelled())
       run: df -hT
 
+    # 上传 bin 目录（可选）
     - name: Upload Bin Directory
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
       uses: actions/upload-artifact@v4
@@ -136,6 +150,7 @@ jobs:
         name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_PATH }}/bin
 
+    # 整理插件包和固件
     - name: Organize Files
       if: steps.compile.outputs.status == 'success'
       run: |
@@ -163,6 +178,7 @@ jobs:
         rm -f feeds.buildinfo version.buildinfo
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
+    # 上传固件到 Artifact（可选）
     - name: Upload Firmware To Artifact
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
       uses: actions/upload-artifact@v4
@@ -170,6 +186,7 @@ jobs:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
+    # 上传固件到 Release
     - name: Upload Firmware To Release
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1
