@@ -1,20 +1,25 @@
-name: LEDE_Build
+# ==========================================
+# OpenWrt 主编译通用模板（支持多平台多分支）
+# 只需修改 env 变量和 on.repository_dispatch.types 即可适配任意项目
+# ==========================================
+
+name: Lede_Build_Template
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: 0 19 * * *
+  workflow_dispatch:  # 支持手动点击启动
+  repository_dispatch:  # 支持 update-checker.yml 自动触发
+    types: [Source Code Update lede]  # 修改为你的事件类型（如 Source Code Update libwrt）
 
 env:
-  REPO_URL: https://github.com/ending7495/lede.git
-  REPO_BRANCH: master
-  CONFIG_FILE: configs/lede.config
-  DIY_SCRIPT: lede.sh
-  CLASH_KERNEL: amd64
+  REPO_URL: https://github.com/ending7495/lede.git         # 源码地址（需修改）
+  REPO_BRANCH: master                                  # 源码分支（需修改）
+  CONFIG_FILE: configs/lede.config              # .config 路径（需修改）
+  DIY_SCRIPT: lede.sh                            # 自定义脚本（需修改）
+  FIRMWARE_TAG: Lede_ER1                     # 发布标签（可修改）
   CACHE_TOOLCHAIN: true
   UPLOAD_BIN_DIR: false
   FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: Lede_ER1
+  CLASH_KERNEL: amd64
   TZ: Asia/Shanghai
 
 jobs:
@@ -22,25 +27,25 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-    - name: Check Server Performance(检查服务器性能)
+    # 检查服务器性能
+    - name: Check Server Performance
       run: |
-        echo "警告⚠"
-        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
-        echo -e "已知CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
+        echo "警告⚠ 服务器性能有限，插件过多请注意！"
+        echo -e "CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
         echo "--------------------------CPU信息--------------------------"
-        echo "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPU物理数量：$(cat /proc/cpuinfo | grep 'physical id' | sort | uniq | wc -l)"
         echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
         echo "--------------------------内存信息--------------------------"
-        echo "已安装内存详细信息："
         echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
         echo "--------------------------硬盘信息--------------------------"
         echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
-    - name: Initialization Environment(初始化环境)
+    # 初始化环境，清理无用依赖
+    - name: Initialization Environment
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        docker rmi $(docker images -q)
+        docker rmi $(docker images -q) || true
         sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
         sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
         sudo -E apt-get -y update
@@ -50,17 +55,20 @@ jobs:
         sudo -E apt-get -y clean
         sudo timedatectl set-timezone "$TZ"
 
-    - name: Combine Disks(合并磁盘)
+    # 合并磁盘，扩展可用空间
+    - name: Combine Disks
       uses: easimon/maximize-build-space@master
       with:
         swap-size-mb: 1024
         temp-reserve-mb: 100
         root-reserve-mb: 1024
 
+    # 拉取 workflow 仓库代码
     - name: Checkout
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
 
-    - name: Clone Source Code(克隆源代码)
+    # 克隆 OpenWrt 源码
+    - name: Clone Source Code
       run: |
         df -hT $GITHUB_WORKSPACE
         git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
@@ -68,37 +76,11 @@ jobs:
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
         VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
-        # VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
-        # echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
-        # # Add a feed source(By Superman)
+        VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/generic/kernel-* 2>/dev/null | head -n1)
+        [ -n "$VERSION_KERNEL" ] && echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
-        
-    
-        
-
-    - name: Run DIY Script(执行自定义脚本)
-      run: |
-        cd $OPENWRT_PATH 
-        chmod +x ../$DIY_SCRIPT  # 添加执行权限 
-        ../$DIY_SCRIPT            # 在源码目录外执行脚本 
-        echo "自定义脚本执行完成！"
-        
-
-    
-
-    # - name: Generate Variables(生成变量)
-    #   run: |
-    #     cp $CONFIG_FILE $OPENWRT_PATH/.config
-    #     cd $OPENWRT_PATH
-    #     make defconfig > /dev/null 2>&1
-    #     SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-    #     echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-    #     DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-    #     echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-    #     DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-    #     echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-
-    - name: Generate Variables(生成变量)
+    # 生成变量，便于后续缓存和发布
+    - name: Generate Variables
       run: |
         cp $CONFIG_FILE $OPENWRT_PATH/.config
         cd $OPENWRT_PATH
@@ -109,26 +91,34 @@ jobs:
         echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
         DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-        # VERSION_KERNEL=$(make kernelversion)
-        # echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
-   
 
-
-    - name: Cache Toolchain(缓存工具链)
+    # 缓存工具链，加速二次编译
+    - name: Cache Toolchain
       if: env.CACHE_TOOLCHAIN == 'true'
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: false
         mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
         prefix: ${{ env.OPENWRT_PATH }}
-        
-    
-    - name: Load Custom Configuration(加载自定义配置)
+
+    # 安装 feeds
+    - name: Install Feeds
+      run: |
+        cd $OPENWRT_PATH
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    # 加载自定义配置并运行 diy 脚本
+    - name: Load Custom Configuration and Run DIY Script
       run: |
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
+        chmod +x $DIY_SCRIPT
+        cd $OPENWRT_PATH
+        $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-    - name: Download DL Package(下载DL软件包)
+    # 下载 DL 包
+    - name: Download DL Package
       run: |
         cd $OPENWRT_PATH
         make defconfig
@@ -136,7 +126,8 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    - name: Compile Firmware(开始编译固件)
+    # 编译固件
+    - name: Compile Firmware
       id: compile
       run: |
         cd $OPENWRT_PATH
@@ -146,46 +137,35 @@ jobs:
         echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
         echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
 
-    - name: Check Space Usage(检查空间使用情况)
+    # 检查空间使用
+    - name: Check Space Usage
       if: (!cancelled())
       run: df -hT
 
-    - name: Upload Bin Directory(上传固件)
+    # 上传 bin 目录（可选）
+    - name: Upload Bin Directory
       if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.OPENWRT_PATH }}/bin
 
-    # - name: Organize Files(整理文件)
-    #   if: steps.compile.outputs.status == 'success'
-    #   run: |
-    #     cd $OPENWRT_PATH/bin/targets/*/*
-    #     cat sha256sums
-    #     cp $OPENWRT_PATH/.config build.config
-    #     mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
-    #     tar -zcf Packages.tar.gz packages
-    #     rm -rf packages feeds.buildinfo version.buildinfo
-    #     echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-
-    - name: Organize Files(整理打包插件文件)
+    # 整理插件包和固件
+    - name: Organize Files
       if: steps.compile.outputs.status == 'success'
       run: |
         cd $OPENWRT_PATH/bin/targets/*/*
-        cat sha256sums
+        cat sha256sums || true
         cp $OPENWRT_PATH/.config build.config
-
         IPK_DIR="$OPENWRT_PATH/bin/packages"
         FOUND_IPK=false
         FOUND_APK=false
-
         if find "$IPK_DIR" -type f -name '*.ipk' | grep -q .; then
           FOUND_IPK=true
         fi
         if find "$IPK_DIR" -type f -name '*.apk' | grep -q .; then
           FOUND_APK=true
         fi
-
         if [ "$FOUND_IPK" = true ] || [ "$FOUND_APK" = true ]; then
           mkdir -p packages
           [ "$FOUND_IPK" = true ] && find "$IPK_DIR" -type f -name '*.ipk' -exec mv -f {} packages/ \;
@@ -195,19 +175,19 @@ jobs:
         else
           echo "::warning ::No .ipk or .apk plugin packages found, skipping packaging step."
         fi
-
         rm -f feeds.buildinfo version.buildinfo
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
-
-    - name: Upload Firmware To Artifact(将固件上传到Artifact)
+    # 上传固件到 Artifact（可选）
+    - name: Upload Firmware To Artifact
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
-      uses: actions/upload-artifact@main
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
-    - name: Upload Firmware To Release(发布固件)
+    # 上传固件到 Release
+    - name: Upload Firmware To Release
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
@@ -218,14 +198,11 @@ jobs:
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
-          ### 📒 固件信息(无WIFI)
-          - 无WIFI带有线NSS的6.12内核固件
-          - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
-          - ⚽ 固件源码: ${{ env.REPO_URL }}
-          - 💝 源码分支: ${{ env.REPO_BRANCH }}
-          - 🌐 默认地址: 192.168.10.1
-          - 🔑 默认密码: 无
-          ### 🧊 固件版本
-          # - 固件内核版本：${{ env.VERSION_KERNEL }}
+          ### 📒 固件信息
+          - 固件源码: ${{ env.REPO_URL }}
+          - 源码分支: ${{ env.REPO_BRANCH }}
+          - 默认地址: 192.168.1.1
+          - 默认密码: password
+          - 固件内核版本: ${{ env.VERSION_KERNEL }}
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-          - ${{ env.VERSION_INFO }} 我只拉取指定分支的源代码
+          - ${{ env.VERSION_INFO }}
