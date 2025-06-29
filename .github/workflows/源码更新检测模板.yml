@@ -1,0 +1,62 @@
+# ==========================================
+# 多仓库 OpenWrt 源码更新检测
+# 检测到源码有新提交时，仅触发对应的主编译 workflow
+# 支持手动和定时检测
+# ==========================================
+
+name: Multi-Source Update Checker
+
+on:
+  workflow_dispatch:  # 手动触发检测
+  schedule:           # 定时检测（每6小时一次，可按需修改）
+    - cron: '0 */6 * * *'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # ===== 在这里添加你需要检测的所有 openwrt 源码仓库和分支 =====
+        repo:
+          - { name: libwrt, url: https://github.com/LiBwrt/openwrt-6.x.git, branch: k6.12-nss }
+          - { name: lede, url: https://github.com/coolsnowwolf/lede, branch: master }
+          - { name: immortalwrt, url: https://github.com/immortalwrt/immortalwrt, branch: openwrt-23.05 }
+        # ===========================================================
+
+    steps:
+      # 克隆目标源码仓库，仅拉取最新一次提交
+      - name: Get Commit Hash
+        id: getHash
+        run: |
+          git clone --depth 1 ${{ matrix.repo.url }} -b ${{ matrix.repo.branch }} repo
+          cd repo
+          echo "commitHash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      # 利用 actions/cache 保存上次已检测的 commit hash
+      - name: Compare Commit Hash
+        id: cacheHash
+        uses: actions/cache@v3
+        with:
+          path: .commitHash_${{ matrix.repo.name }}
+          key: commitHash_${{ matrix.repo.name }}_${{ steps.getHash.outputs.commitHash }}
+
+      # 如果 commit hash 有变化，保存新 hash
+      - name: Save New Commit Hash
+        if: steps.cacheHash.outputs.cache-hit != 'true'
+        run: |
+          echo ${{ steps.getHash.outputs.commitHash }} | tee .commitHash_${{ matrix.repo.name }}
+
+      # 仅当源码有更新时，触发对应主编译 workflow
+      - name: Trigger build
+        if: steps.cacheHash.outputs.cache-hit != 'true'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ github.token }}
+          event-type: Source Code Update ${{ matrix.repo.name }}
+
+      # 自动清理历史 workflow 运行记录，节省空间
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          retain_days: 0
+          keep_minimum_runs: 2
