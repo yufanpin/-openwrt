@@ -9,7 +9,7 @@ name: LEDE_Build_Template
 on:
   workflow_dispatch:  # 支持手动点击启动
   repository_dispatch:  # 支持自动触发（事件类型需与 update-checker.yml 保持一致）
-    types: [Source Code Update YOUR_PROJECT]  # ← 修改为你的事件类型（如 Source Code Update lede）
+    types: [Source Code Update lede]  # ← 修改为你的事件类型（如 Source Code Update lede）
 
 env:
   REPO_URL: https://github.com/ending7495/lede.git         # ← 源码地址（需修改）
