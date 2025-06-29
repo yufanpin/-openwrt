@@ -2,8 +2,11 @@ name: OpenWrt_Build_Template
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: 0 19 * * *  # 可选，定时自动编译
+  repository_dispatch:
+    types: [Source Code Update]                        # 当update-checker.yml检测到上游源码发生变动时开始自动编译
+  # schedule:
+  #   - cron: 0 19 * * *  # 可选，定时自动编译
+  
 
 env:
   REPO_URL: https://github.com/your/openwrt.git         # 修改为你的源码地址
