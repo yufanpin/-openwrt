@@ -23,6 +23,7 @@ env:
   CLASH_KERNEL: amd64                                  # clash 内核架构
   TZ: Asia/Shanghai                                    # 时区
 
+
 jobs:
   Build:
     runs-on: ubuntu-22.04
@@ -161,26 +162,24 @@ jobs:
       if: (!cancelled())
       run: df -hT
 
-    # 整理固件、插件、配置文件，结构清晰
+    # 整理固件与插件（参考最佳实践，插件只收集bin/packages/*/*/下的ipk和apk）
     - name: Organize Files (整理固件与插件)
       if: steps.compile.outputs.status == 'success'
       run: |
         cd $OPENWRT_PATH/bin/targets/*/*
-        cat sha256sums || true
-        cp $OPENWRT_PATH/.config build.config
+        cat sha256sums || true                      # 输出固件校验信息
+        cp $OPENWRT_PATH/.config build.config       # 备份编译配置
         mkdir -p packages
-        # 收集所有 .ipk
-        find $OPENWRT_PATH/bin/packages -type f -name '*.ipk' -exec cp {} packages/ \; 2>/dev/null || true
-        # 收集所有 .apk
-        find $OPENWRT_PATH/bin/packages -type f -name '*.apk' -exec cp {} packages/ \; 2>/dev/null || true
-        # 打包插件
-        if [ \"$(ls -A packages)\" ]; then
-          tar -zcf Packages.tar.gz packages
+        # 只收集 bin/packages/*/*/ 目录下的 .ipk 和 .apk 插件包
+        find $OPENWRT_PATH/bin/packages/*/*/ -maxdepth 1 -type f \( -name '*.ipk' -o -name '*.apk' \) -exec cp {} packages/ \; 2>/dev/null || true
+        PLUGIN_COUNT=$(ls -1 packages/*.ipk packages/*.apk 2>/dev/null | wc -l)
+        if [ "$PLUGIN_COUNT" -gt 0 ]; then
+          tar -zcf Packages.tar.gz packages         # 打包所有插件
         else
-          echo \"::warning ::No .ipk or .apk plugin packages found, skipping packaging step.\"
+          echo "::warning ::No .ipk or .apk plugin packages found, skipping packaging step."
         fi
         rm -rf packages feeds.buildinfo version.buildinfo 2>/dev/null || true
-        echo \"FIRMWARE_PATH=$PWD\" >> $GITHUB_ENV
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV    # 设置固件发布目录
 
     # 上传固件到 Artifact（可选）
     - name: Upload Firmware To Artifact
@@ -190,7 +189,18 @@ jobs:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
-    # 上传固件到 Release
+    # 查找所有固件文件，避免上传目录或超大文件
+    - name: Find firmware files
+      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
+      id: find_firmware
+      run: |
+        cd "$FIRMWARE_PATH"
+        # 只收集常见固件类型且小于2GB的文件
+        find . -maxdepth 1 -type f \( -name '*.img' -o -name '*.bin' -o -name '*.tar.gz' -o -name '*.gz' -o -name '*.zip' -o -name '*.trx' -o -name '*.chk' -o -name '*.itb' \) -size -2048M > firmware_list.txt
+        cat firmware_list.txt
+        echo "FIRMWARE_FILES=$(paste -sd\",\" firmware_list.txt | sed 's|^./||g')" >> $GITHUB_ENV
+
+    # 上传固件到 Release，只上传固件本体、sha256sums、build.config、Packages.tar.gz
     - name: Upload Firmware To Release
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1
@@ -199,7 +209,7 @@ jobs:
         allowUpdates: true
         tag: ${{ env.FIRMWARE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        artifacts: ${{ env.FIRMWARE_PATH }}/sha256sums,${{ env.FIRMWARE_PATH }}/build.config,${{ env.FIRMWARE_PATH }}/Packages.tar.gz,${{ env.FIRMWARE_PATH }}/${{ env.FIRMWARE_FILES }}
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
           ### 📒 固件信息
