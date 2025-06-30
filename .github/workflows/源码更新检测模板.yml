@@ -21,6 +21,7 @@ jobs:
           - { name: libwrt, url: https://github.com/LiBwrt/openwrt-6.x.git, branch: k6.12-nss }
           - { name: lede, url: https://github.com/coolsnowwolf/lede, branch: master }
           - { name: immortalwrt, url: https://github.com/immortalwrt/immortalwrt, branch: openwrt-23.05 }
+          - { name: openwrt, url: https://github.com/ending7495/openwrt.git, branch: '24.10' }
         # ===========================================================
 
     steps:
