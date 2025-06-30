@@ -26,21 +26,20 @@ env:
 
 jobs:
   Build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04  # 编译环境，建议 22.04
 
     steps:
-    # 检查服务器性能，便于判断编译资源
+    # 检查服务器性能（可选，便于了解编译资源）
     - name: Check Server Performance
       run: |
         echo "警告⚠ 服务器性能有限，插件过多请注意！"
-        echo -e "CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
         echo "--------------------------CPU信息--------------------------"
         echo "CPU物理数量：$(cat /proc/cpuinfo | grep 'physical id' | sort | uniq | wc -l)"
-        echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c)"
         echo "--------------------------内存信息--------------------------"
-        echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
+        sudo lshw -short -C memory | grep GiB || true
         echo "--------------------------硬盘信息--------------------------"
-        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+        df -hT
 
     # 初始化环境，清理无用依赖，释放空间
     - name: Initialization Environment
@@ -57,7 +56,7 @@ jobs:
         sudo -E apt-get -y clean
         sudo timedatectl set-timezone "$TZ"
 
-    # 合并磁盘，扩展临时空间
+    # 合并磁盘空间，防止磁盘爆满
     - name: Combine Disks
       uses: easimon/maximize-build-space@master
       with:
@@ -72,12 +71,10 @@ jobs:
     # 克隆 OpenWrt 源码并提取元信息
     - name: Clone Source Code
       run: |
-        set -o pipefail
-        df -hT $GITHUB_WORKSPACE
         git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        # 提取主分支最后一次提交信息（容错）
+        # 提取主分支最后一次提交信息
         VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H" 2>/dev/null || echo "unknown")
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         # 提取内核版本（兼容多种源码结构）
@@ -88,9 +85,6 @@ jobs:
           VERSION_KERNEL=$(grep -r -m1 -oP 'LINUX_VERSION:=[ ]*\K[0-9]+\.[0-9]+\.[0-9]+' target/linux/ | head -n1)
         fi
         echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
-        echo "VERSION_INFO: $VERSION_INFO"
-        echo "VERSION_KERNEL: $VERSION_KERNEL"
-        ls -al target/linux/generic/ || true
 
     # 生成变量，便于后续缓存和发布
     - name: Generate Variables
@@ -101,14 +95,14 @@ jobs:
         SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
         echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
         # 提取 target
-        DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | grep -o '".*"' | tr -d '"' || true)
-        [ -z "$DEVICE_TARGET" ] && DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | awk -F '=' '{print $2}' | tr -d '"' || true)
+        DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | grep -o '\".*\"' | tr -d '\"' || true)
+        [ -z "$DEVICE_TARGET" ] && DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD .config | awk -F '=' '{print $2}' | tr -d '\"' || true)
         echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | grep -o '".*"' | tr -d '"' || true)
-        [ -z "$DEVICE_SUBTARGET" ] && DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '=' '{print $2}' | tr -d '"' || true)
+        DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | grep -o '\".*\"' | tr -d '\"' || true)
+        [ -z "$DEVICE_SUBTARGET" ] && DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '=' '{print $2}' | tr -d '\"' || true)
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
-    # 缓存工具链，加速二次编译
+    # 缓存工具链，加速二次编译（可选）
     - name: Cache Toolchain
       if: env.CACHE_TOOLCHAIN == 'true'
       uses: HiGarfield/cachewrtbuild@main
@@ -117,14 +111,14 @@ jobs:
         mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
         prefix: ${{ env.OPENWRT_PATH }}
 
-    # 安装 feeds
+    # 安装 feeds（OpenWrt 插件源）
     - name: Install Feeds
       run: |
         cd "$OPENWRT_PATH"
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    # 加载自定义配置并运行 diy 脚本
+    # 加载自定义配置并运行 DIY 脚本
     - name: Load Custom Configuration and Run DIY Script
       run: |
         [ -e files ] && mv files "$OPENWRT_PATH/files"
@@ -137,7 +131,7 @@ jobs:
           echo "::warning ::DIY script not found, skipped"
         fi
 
-    # 下载 DL 包（关键步骤，失败立即终止）
+    # 下载 DL 包（源码依赖包，失败立即终止）
     - name: Download DL Package
       run: |
         cd "$OPENWRT_PATH"
@@ -146,23 +140,23 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
-    # 编译固件（关键步骤，失败立即终止）
+    # 编译固件（核心步骤）
     - name: Compile Firmware
       id: compile
       run: |
         cd "$OPENWRT_PATH"
-        echo -e "$(nproc) thread compile"
+        echo "$(nproc) thread compile"
         make -j$(nproc) || make -j1 || make -j1 V=s
         echo "status=success" >> $GITHUB_OUTPUT
         echo "DATE=$(date +\"%Y-%m-%d %H:%M:%S\")" >> $GITHUB_ENV
         echo "FILE_DATE=$(date +\"%Y.%m.%d\")" >> $GITHUB_ENV
 
-    # 检查空间使用
+    # 检查空间使用（可选）
     - name: Check Space Usage
       if: (!cancelled())
       run: df -hT
 
-    # 整理固件与插件（参考最佳实践，插件只收集bin/packages/*/*/下的ipk和apk）
+    # 整理固件与插件，确保所有需上传文件都在固件目录
     - name: Organize Files (整理固件与插件)
       if: steps.compile.outputs.status == 'success'
       run: |
@@ -170,18 +164,13 @@ jobs:
         cat sha256sums || true                      # 输出固件校验信息
         cp $OPENWRT_PATH/.config build.config       # 备份编译配置
         mkdir -p packages
-        # 只收集 bin/packages/*/*/ 目录下的 .ipk 和 .apk 插件包
+        # 收集所有插件包（可选）
         find $OPENWRT_PATH/bin/packages/*/*/ -maxdepth 1 -type f \( -name '*.ipk' -o -name '*.apk' \) -exec cp {} packages/ \; 2>/dev/null || true
-        PLUGIN_COUNT=$(ls -1 packages/*.ipk packages/*.apk 2>/dev/null | wc -l)
-        if [ "$PLUGIN_COUNT" -gt 0 ]; then
-          tar -zcf Packages.tar.gz packages         # 打包所有插件
-        else
-          echo "::warning ::No .ipk or .apk plugin packages found, skipping packaging step."
-        fi
+        [ -d packages ] && tar -zcf Packages.tar.gz packages
         rm -rf packages feeds.buildinfo version.buildinfo 2>/dev/null || true
         echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV    # 设置固件发布目录
 
-    # 上传固件到 Artifact（可选）
+    # 上传固件到 Artifact（可选，供调试下载）
     - name: Upload Firmware To Artifact
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
       uses: actions/upload-artifact@v4
@@ -189,18 +178,7 @@ jobs:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
-    # 查找所有固件文件，避免上传目录或超大文件
-    - name: Find firmware files
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-      id: find_firmware
-      run: |
-        cd "$FIRMWARE_PATH"
-        # 只收集常见固件类型且小于2GB的文件
-        find . -maxdepth 1 -type f \( -name '*.img' -o -name '*.bin' -o -name '*.tar.gz' -o -name '*.gz' -o -name '*.zip' -o -name '*.trx' -o -name '*.chk' -o -name '*.itb' \) -size -2048M > firmware_list.txt
-        cat firmware_list.txt
-        echo "FIRMWARE_FILES=$(paste -sd\",\" firmware_list.txt | sed 's|^./||g')" >> $GITHUB_ENV
-
-    # 上传固件到 Release，只上传固件本体、sha256sums、build.config、Packages.tar.gz
+    # 上传固件到 Release（极简、兼容、易维护，上传固件目录下所有文件）
     - name: Upload Firmware To Release
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1
@@ -209,7 +187,7 @@ jobs:
         allowUpdates: true
         tag: ${{ env.FIRMWARE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: ${{ env.FIRMWARE_PATH }}/sha256sums,${{ env.FIRMWARE_PATH }}/build.config,${{ env.FIRMWARE_PATH }}/Packages.tar.gz,${{ env.FIRMWARE_PATH }}/${{ env.FIRMWARE_FILES }}
+        artifacts: ${{ env.FIRMWARE_PATH }}/*  # 上传固件目录下所有文件，简单、兼容、易维护
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
           ### 📒 固件信息
