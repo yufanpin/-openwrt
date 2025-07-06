@@ -142,14 +142,6 @@ jobs:
         find dl -size -1024c -exec rm -f {} \;
 
 
-    # 上传预编译配置到临时Artifacts（新增步骤）
-    - name: Upload Pre-Build Config 
-      uses: actions/upload-artifact@v4
-      with: 
-        name: prebuild-config-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
-        path: ${{ env.OPENWRT_PATH }}/.config 
-        retention-days: 1  # 24小时后自动清理 
-
 
 
         
