@@ -102,6 +102,23 @@ jobs:
         [ -z "$DEVICE_SUBTARGET" ] && DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET .config | awk -F '=' '{print $2}' | tr -d '\"' || true)
         echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
+
+
+
+        
+
+        # 上传预编译配置到临时Artifacts（新增步骤）
+    - name: Upload Pre-Build Config 
+      uses: actions/upload-artifact@v4
+      with: 
+        name: prebuild-config-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        path: ${{ env.OPENWRT_PATH }}/.config 
+        retention-days: 1  # 24小时后自动清理 
+
+
+
+        
+
     # 缓存工具链，加速二次编译（可选）
     - name: Cache Toolchain
       if: env.CACHE_TOOLCHAIN == 'true'
