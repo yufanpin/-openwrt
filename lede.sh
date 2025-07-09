@@ -39,7 +39,7 @@ sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE
 
 ### ========== 6. 设置内核版本 ==========
 # 直接在这里填写你想使用的内核版本
-KERNEL_VERSION="5.10"
+KERNEL_VERSION="6.6"
 
 # 修改 Makefile 中的内核版本
 echo "设置内核版本为 $KERNEL_VERSION"
