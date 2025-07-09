@@ -1,10 +1,8 @@
 #!/bin/bash
 
-
 ### ========== 1. 添加 feed 源 ==========
 # echo 'src-git kiddin9 https://github.com/kiddin9/kwrt-packages.git' >>feeds.conf.default
 # echo 'src-git smpackage https://github.com/kenzok8/small-package.git' >>feeds.conf.default
-
 
 ### ========== 2. 添加额外插件 ==========
 git clone --depth=1 https://github.com/lwb1978/openwrt-gecoosac.git package/openwrt-gecoosac                          #集客ac控制器
@@ -21,7 +19,6 @@ git clone --depth=1 https://github.com/sirpdboy/luci-app-taskplan package/luci-a
 # git clone --depth=1 https://github.com/yufanpin/luci-app-design-config.git package/luci-app-design-config             #design设置界面
 
 git clone --depth=1 https://github.com/kiddin9/luci-app-wizard.git package/luci-app-wizard.git                         #设置向导
-
 
 ### ========== 3. 修改默认 IP、主机名、界面信息等 ==========
 # 修改默认 IP 地址
@@ -40,7 +37,14 @@ sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE
 # find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's|PKG_SOURCE_URL:=@GHREPO|PKG_SOURCE_URL:=https://github.com|g' {}
 # find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's|PKG_SOURCE_URL:=@GHCODELOAD|PKG_SOURCE_URL:=https://codeload.github.com|g' {}
 
-### ========== 6. 拉取 feeds ==========
+### ========== 6. 设置内核版本 ==========
+# 直接在这里填写你想使用的内核版本
+KERNEL_VERSION="5.10"
+
+# 修改 Makefile 中的内核版本
+echo "设置内核版本为 $KERNEL_VERSION"
+sed -i "s/KERNEL_PATCHVER:=.*/KERNEL_PATCHVER:=$KERNEL_VERSION/" target/linux/qualcommax/Makefile
+
+### ========== 7. 拉取 feeds ==========
 ./scripts/feeds update -a
 ./scripts/feeds install -a
-
